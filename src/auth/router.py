@@ -184,6 +184,9 @@ def download_job_result(
         path=job.result,
         filename=Path(job.result).name,
         media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{Path(job.result).name}"'
+        },
     )
 
 
@@ -257,7 +260,8 @@ async def get_excel(
     return FileResponse(
         path=excel_path,
         filename=excel_path.name,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{excel_path.name}"'},
     )
 
 
