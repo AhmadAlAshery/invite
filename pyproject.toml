@@ -1,0 +1,19 @@
+[project]
+name = "fastapi-render-tutorial"
+version = "0.1.0"
+description = "A simple FastAPI tutorial for deploying to Render"
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv==1.2.1",
+    "fastapi[standard]==0.128.0",
+    "alembic==1.18.1",
+    "pytz==2025.2",
+    "pydantic-settings==2.12.0",
+    "bcrypt==5.0.0",
+    "python-jose==3.5.0",
+    "openpyxl==3.1.5",
+    "pandas==3.0.0",
+    "pillow==12.1.1",
+    "qrcode==8.2",
+    "psycopg2-binary>=2.9.0",
+]

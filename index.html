@@ -1,0 +1,2894 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Invité — Event Check-In</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Jost:wght@300;400;500;600&display=swap"
+            rel="stylesheet"
+        />
+        <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+        <style>
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            :root {
+                --gold: #c9a84c;
+                --gold-light: #e8c97a;
+                --gold-pale: #f5e6b8;
+                --gold-dim: rgba(201, 168, 76, 0.12);
+                --gold-glow: rgba(201, 168, 76, 0.28);
+                --obsidian: #08080a;
+                --surface: #0e0e12;
+                --surface2: #16161c;
+                --surface3: #1e1e26;
+                --border: rgba(201, 168, 76, 0.16);
+                --border-hover: rgba(201, 168, 76, 0.38);
+                --text: #ede9e0;
+                --text-muted: #7a7570;
+                --text-sub: #4a4540;
+                --red: #d94f4f;
+                --red-dim: rgba(217, 79, 79, 0.14);
+                --green: #4dab6a;
+                --green-dim: rgba(77, 171, 106, 0.14);
+                --blue: #4d8cab;
+                --blue-dim: rgba(77, 140, 171, 0.14);
+                --radius: 10px;
+                --radius-lg: 16px;
+            }
+
+            html {
+                scroll-behavior: smooth;
+            }
+
+            body {
+                font-family: "Jost", sans-serif;
+                background: var(--obsidian);
+                color: var(--text);
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            body::before {
+                content: "";
+                position: fixed;
+                top: -30%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 900px;
+                height: 700px;
+                background: radial-gradient(
+                    ellipse,
+                    rgba(201, 168, 76, 0.035) 0%,
+                    transparent 70%
+                );
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            #root {
+                position: relative;
+                z-index: 1;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            ::-webkit-scrollbar {
+                width: 5px;
+            }
+            ::-webkit-scrollbar-track {
+                background: var(--surface);
+            }
+            ::-webkit-scrollbar-thumb {
+                background: var(--border);
+                border-radius: 3px;
+            }
+
+            .toast-container {
+                position: fixed;
+                top: 76px;
+                right: 20px;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                pointer-events: none;
+            }
+            .toast {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+
+                padding: 16px 20px;
+
+                border-radius: var(--radius);
+                min-width: 300px;
+                max-width: 420px;
+
+                border: 1px solid;
+                backdrop-filter: blur(30px);
+
+                pointer-events: all;
+
+                font-size: 0.92rem;
+                line-height: 1.5;
+
+                box-shadow:
+                    0 12px 40px rgba(0, 0, 0, 0.7),
+                    0 0 0 1px rgba(255, 255, 255, 0.04);
+
+                animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            .toast.exiting {
+                animation: toastOut 0.25s ease forwards;
+            }
+            .toast-success {
+                background: rgba(10, 14, 10, 0.98);
+                border-color: rgba(77, 171, 106, 0.75);
+            }
+            .toast-error {
+                background: rgba(10, 10, 14, 0.94);
+                border-color: rgba(217, 79, 79, 0.4);
+            }
+            .toast-warning {
+                background: rgba(20, 18, 8, 0.98);
+                border-color: rgba(201, 168, 76, 0.75);
+            }
+            .toast-info {
+                background: rgba(10, 14, 18, 0.98);
+                border-color: rgba(77, 140, 171, 0.75);
+            }
+            .toast-icon {
+                font-size: 1rem;
+                flex-shrink: 0;
+                line-height: 1.5;
+            }
+            .toast-body {
+                flex: 1;
+            }
+            .toast-title {
+                font-weight: 600;
+                font-size: 0.82rem;
+                margin-bottom: 2px;
+            }
+            .toast-success .toast-title {
+                color: var(--green);
+            }
+            .toast-error {
+                background: rgba(18, 10, 10, 0.98);
+                border-color: rgba(217, 79, 79, 0.75);
+            }
+            .toast-warning .toast-title {
+                color: var(--gold);
+            }
+            .toast-info .toast-title {
+                color: var(--blue);
+            }
+            .toast-msg {
+                color: #e6e0d6;
+                font-size: 0.9rem;
+                opacity: 0.95;
+            }
+            .toast-close {
+                background: none;
+                border: none;
+                color: var(--text-sub);
+                cursor: pointer;
+                font-size: 1.1rem;
+                line-height: 1;
+                flex-shrink: 0;
+                transition: color 0.2s;
+            }
+            .toast-close:hover {
+                color: var(--text);
+            }
+            @keyframes toastIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(20px) scale(0.96);
+                }
+                to {
+                    opacity: 1;
+                    transform: none;
+                }
+            }
+            @keyframes toastOut {
+                from {
+                    opacity: 1;
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(20px);
+                }
+            }
+
+            .navbar {
+                position: sticky;
+                top: 0;
+                z-index: 200;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 2.5rem;
+                height: 64px;
+                background: rgba(8, 8, 10, 0.9);
+                backdrop-filter: blur(28px);
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+            }
+            .nav-logo {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 1.65rem;
+                font-weight: 700;
+                font-style: italic;
+                background: linear-gradient(
+                    135deg,
+                    var(--gold),
+                    var(--gold-light),
+                    var(--gold-pale)
+                );
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                letter-spacing: 0.06em;
+                cursor: pointer;
+            }
+            .nav-actions {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+            }
+            .nav-user {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 5px 12px 5px 6px;
+                border: 1px solid var(--border);
+                border-radius: 50px;
+                background: var(--surface2);
+            }
+            .nav-avatar {
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                background: linear-gradient(
+                    135deg,
+                    var(--gold),
+                    var(--gold-light)
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #08080a;
+            }
+            .nav-email {
+                font-size: 0.78rem;
+                color: var(--text-muted);
+                max-width: 130px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 0.5rem 1.2rem;
+                border-radius: 8px;
+                font-family: "Jost", sans-serif;
+                font-size: 0.875rem;
+                font-weight: 500;
+                cursor: pointer;
+                border: none;
+                transition: all 0.18s ease;
+                text-decoration: none;
+                white-space: nowrap;
+                letter-spacing: 0.02em;
+            }
+            .btn:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+            .btn-ghost {
+                background: transparent;
+                color: var(--text-muted);
+                border: 1px solid transparent;
+            }
+            .btn-ghost:hover {
+                color: var(--text);
+                background: var(--surface2);
+            }
+            .btn-gold {
+                background: linear-gradient(
+                    135deg,
+                    var(--gold),
+                    var(--gold-light)
+                );
+                color: #08080a;
+                font-weight: 600;
+            }
+            .btn-gold:hover:not(:disabled) {
+                opacity: 0.88;
+                transform: translateY(-1px);
+                box-shadow: 0 6px 24px var(--gold-glow);
+            }
+            .btn-outline {
+                background: transparent;
+                color: var(--gold);
+                border: 1px solid var(--border);
+            }
+            .btn-outline:hover {
+                border-color: var(--border-hover);
+                background: var(--gold-dim);
+            }
+            .btn-danger {
+                background: var(--red-dim);
+                color: var(--red);
+                border: 1px solid rgba(217, 79, 79, 0.22);
+            }
+            .btn-danger:hover {
+                background: rgba(217, 79, 79, 0.22);
+            }
+            .btn-surface {
+                background: var(--surface2);
+                color: var(--text);
+                border: 1px solid var(--border);
+            }
+            .btn-surface:hover {
+                border-color: var(--border-hover);
+            }
+            .btn-sm {
+                padding: 0.32rem 0.85rem;
+                font-size: 0.78rem;
+                border-radius: 7px;
+            }
+            .btn-lg {
+                padding: 0.85rem 2.25rem;
+                font-size: 1rem;
+                border-radius: 10px;
+            }
+            .btn-full {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Image download button */
+            .btn-img {
+                background: rgba(77, 140, 171, 0.12);
+                color: var(--blue);
+                border: 1px solid rgba(77, 140, 171, 0.25);
+            }
+            .btn-img:hover {
+                background: rgba(77, 140, 171, 0.22);
+            }
+
+            .modal-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 500;
+                background: rgba(0, 0, 0, 0.78);
+                backdrop-filter: blur(10px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                animation: fadeIn 0.18s ease;
+            }
+            .modal {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+                width: 100%;
+                max-width: 430px;
+                padding: 2rem;
+                position: relative;
+                animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+                box-shadow: 0 32px 80px rgba(0, 0, 0, 0.75);
+            }
+            .modal-lg {
+                max-width: 760px;
+            }
+            .modal-close {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                background: none;
+                border: none;
+                color: var(--text-sub);
+                cursor: pointer;
+                font-size: 1.25rem;
+                padding: 4px;
+                border-radius: 4px;
+                transition: color 0.2s;
+                line-height: 1;
+            }
+            .modal-close:hover {
+                color: var(--text);
+            }
+            .modal-title {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 1.6rem;
+                font-weight: 600;
+                margin-bottom: 0.2rem;
+            }
+            .modal-sub {
+                font-size: 0.82rem;
+                color: var(--text-muted);
+                margin-bottom: 1.75rem;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                }
+                to {
+                    opacity: 1;
+                }
+            }
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(14px);
+                }
+                to {
+                    opacity: 1;
+                    transform: none;
+                }
+            }
+
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            .form-label {
+                display: block;
+                font-size: 0.75rem;
+                font-weight: 500;
+                color: var(--text-muted);
+                margin-bottom: 0.35rem;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+            }
+            .form-input {
+                width: 100%;
+                padding: 0.6rem 0.9rem;
+                background: var(--surface2);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                color: var(--text);
+                font-family: "Jost", sans-serif;
+                font-size: 0.875rem;
+                transition:
+                    border-color 0.18s,
+                    box-shadow 0.18s;
+            }
+            .form-input:focus {
+                outline: none;
+                border-color: var(--gold);
+                box-shadow: 0 0 0 3px var(--gold-dim);
+            }
+            .form-input::placeholder {
+                color: var(--text-sub);
+            }
+            .form-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+            .form-divider {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin: 1.2rem 0;
+                color: var(--text-sub);
+                font-size: 0.78rem;
+            }
+            .form-divider::before,
+            .form-divider::after {
+                content: "";
+                flex: 1;
+                height: 1px;
+                background: var(--border);
+            }
+            .form-switch {
+                text-align: center;
+                font-size: 0.82rem;
+                color: var(--text-muted);
+                margin-top: 1rem;
+            }
+            .form-switch span {
+                color: var(--gold);
+                cursor: pointer;
+                font-weight: 500;
+            }
+            .form-switch span:hover {
+                text-decoration: underline;
+            }
+
+            .hero {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 4rem 2rem 5rem;
+                text-align: center;
+            }
+            .hero-eyebrow {
+                font-size: 0.72rem;
+                letter-spacing: 0.22em;
+                text-transform: uppercase;
+                color: var(--gold);
+                margin-bottom: 1rem;
+                font-weight: 500;
+            }
+            .hero-title {
+                font-family: "Cormorant Garamond", serif;
+                font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+                font-weight: 700;
+                line-height: 1.1;
+                margin-bottom: 1rem;
+            }
+            .hero-title em {
+                font-style: italic;
+                background: linear-gradient(
+                    135deg,
+                    var(--gold),
+                    var(--gold-light)
+                );
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .hero-sub {
+                font-size: 0.95rem;
+                color: var(--text-muted);
+                max-width: 460px;
+                line-height: 1.75;
+                margin-bottom: 2.5rem;
+            }
+
+            .scanner-card {
+                width: 100%;
+                max-width: 500px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+                padding: 1.75rem;
+                box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+                transition: border-color 0.3s;
+            }
+            .scanner-card.scanning {
+                border-color: rgba(201, 168, 76, 0.45);
+                box-shadow:
+                    0 24px 60px rgba(0, 0, 0, 0.4),
+                    0 0 40px rgba(201, 168, 76, 0.06);
+            }
+            .scanner-viewport {
+                width: 100%;
+                aspect-ratio: 4/3;
+                background: var(--surface2);
+                border-radius: var(--radius);
+                overflow: hidden;
+                position: relative;
+                margin-bottom: 1.25rem;
+                border: 1px solid var(--border);
+            }
+            .scanner-placeholder {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.75rem;
+                color: var(--text-sub);
+            }
+            .scanner-placeholder-icon {
+                font-size: 3rem;
+                opacity: 0.35;
+                animation: breathe 3s ease-in-out infinite;
+            }
+            .scanner-placeholder-text {
+                font-size: 0.8rem;
+            }
+            @keyframes breathe {
+                0%,
+                100% {
+                    opacity: 0.35;
+                    transform: scale(1);
+                }
+                50% {
+                    opacity: 0.55;
+                    transform: scale(1.04);
+                }
+            }
+            .corner {
+                position: absolute;
+                width: 36px;
+                height: 36px;
+                border-color: var(--gold);
+                border-style: solid;
+                z-index: 10;
+                opacity: 0;
+                transition: opacity 0.3s;
+                pointer-events: none;
+            }
+            .corner-tl {
+                top: 10px;
+                left: 10px;
+                border-width: 2px 0 0 2px;
+                border-radius: 3px 0 0 0;
+            }
+            .corner-tr {
+                top: 10px;
+                right: 10px;
+                border-width: 2px 2px 0 0;
+                border-radius: 0 3px 0 0;
+            }
+            .corner-bl {
+                bottom: 10px;
+                left: 10px;
+                border-width: 0 0 2px 2px;
+                border-radius: 0 0 0 3px;
+            }
+            .corner-br {
+                bottom: 10px;
+                right: 10px;
+                border-width: 0 2px 2px 0;
+                border-radius: 0 0 3px 0;
+            }
+            .scanner-card.scanning .corner {
+                opacity: 1;
+            }
+            .scan-line {
+                position: absolute;
+                left: 10px;
+                right: 10px;
+                height: 2px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    var(--gold),
+                    transparent
+                );
+                z-index: 11;
+                display: none;
+                border-radius: 1px;
+                box-shadow:
+                    0 0 10px var(--gold-glow),
+                    0 0 20px var(--gold-dim);
+                animation: scanMove 2.2s ease-in-out infinite;
+            }
+            .scanner-card.scanning .scan-line {
+                display: block;
+            }
+            @keyframes scanMove {
+                0%,
+                100% {
+                    top: 10%;
+                    opacity: 0;
+                }
+                8% {
+                    opacity: 1;
+                }
+                92% {
+                    opacity: 1;
+                }
+                50% {
+                    top: 88%;
+                }
+            }
+            #qr-reader {
+                width: 100% !important;
+                height: 100% !important;
+            }
+            #qr-reader > * {
+                border: none !important;
+                box-shadow: none !important;
+            }
+            #qr-reader video {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: cover;
+            }
+            #qr-reader img {
+                display: none !important;
+            }
+            #qr-reader__dashboard {
+                display: none !important;
+            }
+            #qr-reader__header_message {
+                display: none !important;
+            }
+
+            .scanner-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 1.1rem;
+            }
+            .scanner-badge {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 0.75rem;
+                font-weight: 500;
+                padding: 4px 10px;
+                border-radius: 50px;
+            }
+            .scanner-badge.idle {
+                background: var(--surface3);
+                color: var(--text-muted);
+            }
+            .scanner-badge.active {
+                background: var(--green-dim);
+                color: var(--green);
+                border: 1px solid rgba(77, 171, 106, 0.25);
+            }
+            .badge-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+            .scanner-badge.active .badge-dot {
+                animation: blink 1.4s ease infinite;
+            }
+            @keyframes blink {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.25;
+                }
+            }
+            .scanner-hint {
+                font-size: 0.75rem;
+                color: var(--text-sub);
+            }
+
+            .spinner {
+                width: 16px;
+                height: 16px;
+                border: 2px solid var(--border);
+                border-top-color: var(--gold);
+                border-radius: 50%;
+                animation: spin 0.7s linear infinite;
+                display: inline-block;
+                flex-shrink: 0;
+            }
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+            .loading-center {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 3rem;
+                color: var(--text-muted);
+                gap: 0.75rem;
+                font-size: 0.875rem;
+            }
+
+            .dashboard {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 2.5rem 2rem 4rem;
+                flex: 1;
+            }
+            .dash-header {
+                margin-bottom: 2.25rem;
+            }
+            .dash-eyebrow {
+                font-size: 0.7rem;
+                letter-spacing: 0.22em;
+                text-transform: uppercase;
+                color: var(--gold);
+                margin-bottom: 0.4rem;
+                font-weight: 500;
+            }
+            .dash-title {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 2rem;
+                font-weight: 600;
+            }
+
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+                padding: 1.5rem;
+                transition:
+                    border-color 0.2s,
+                    transform 0.2s;
+            }
+            .card:hover {
+                border-color: var(--border-hover);
+            }
+            .card-label {
+                font-size: 0.7rem;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: var(--text-muted);
+                font-weight: 500;
+                margin-bottom: 0.4rem;
+            }
+            .card-val {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 2.2rem;
+                font-weight: 700;
+                line-height: 1;
+                margin-bottom: 0.2rem;
+            }
+            .card-sub {
+                font-size: 0.78rem;
+                color: var(--text-muted);
+            }
+
+            .progress {
+                width: 100%;
+                height: 5px;
+                background: var(--surface3);
+                border-radius: 3px;
+                overflow: hidden;
+                margin: 0.6rem 0;
+            }
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(
+                    90deg,
+                    var(--gold),
+                    var(--gold-light)
+                );
+                border-radius: 3px;
+                transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .tabs {
+                display: flex;
+                border-bottom: 1px solid var(--border);
+                margin-bottom: 2rem;
+            }
+            .tab {
+                padding: 0.7rem 1.4rem;
+                background: none;
+                border: none;
+                border-bottom: 2px solid transparent;
+                color: var(--text-muted);
+                font-family: "Jost", sans-serif;
+                font-size: 0.85rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.18s;
+                margin-bottom: -1px;
+            }
+            .tab:hover {
+                color: var(--text);
+            }
+            .tab.active {
+                color: var(--gold);
+                border-bottom-color: var(--gold);
+            }
+
+            .section {
+                margin-bottom: 2.5rem;
+            }
+            .section-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 1.2rem;
+            }
+            .section-title {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 1.3rem;
+                font-weight: 600;
+            }
+
+            .events-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 1rem;
+            }
+            .event-card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+                padding: 1.5rem;
+                transition: all 0.2s;
+                cursor: default;
+            }
+            .event-card:hover {
+                border-color: var(--border-hover);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            }
+            .event-name {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 1.15rem;
+                font-weight: 600;
+                margin-bottom: 0.25rem;
+            }
+            .event-id {
+                font-size: 0.68rem;
+                color: var(--text-sub);
+                font-family: monospace;
+                margin-bottom: 0.9rem;
+                letter-spacing: 0.04em;
+            }
+            .event-meta {
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 0.75rem;
+            }
+            .event-stat {
+                font-size: 0.8rem;
+                color: var(--text-muted);
+            }
+            .event-stat strong {
+                color: var(--text);
+                font-weight: 600;
+            }
+            .event-actions {
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .file-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.9rem 1.1rem;
+                background: var(--surface2);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                margin-bottom: 0.5rem;
+                transition: border-color 0.18s;
+            }
+            .file-item:hover {
+                border-color: var(--border-hover);
+            }
+            .file-info {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .file-icon {
+                font-size: 1.3rem;
+            }
+            .file-name {
+                font-size: 0.85rem;
+                font-weight: 500;
+            }
+            .file-meta {
+                font-size: 0.7rem;
+                color: var(--text-sub);
+                font-family: monospace;
+                margin-top: 1px;
+            }
+
+            .table-wrap {
+                overflow-x: auto;
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.85rem;
+            }
+            th {
+                background: var(--surface2);
+                padding: 0.7rem 1rem;
+                text-align: left;
+                font-size: 0.7rem;
+                font-weight: 600;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: var(--text-muted);
+                border-bottom: 1px solid var(--border);
+                white-space: nowrap;
+            }
+            td {
+                padding: 0.8rem 1rem;
+                border-bottom: 1px solid var(--border);
+                color: var(--text);
+            }
+            tr:last-child td {
+                border-bottom: none;
+            }
+            tr:hover td {
+                background: var(--surface2);
+            }
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+                padding: 2px 8px;
+                border-radius: 50px;
+                font-size: 0.7rem;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+            }
+            .badge-green {
+                background: var(--green-dim);
+                color: var(--green);
+            }
+            .badge-red {
+                background: var(--red-dim);
+                color: var(--red);
+            }
+            .badge-gold {
+                background: var(--gold-dim);
+                color: var(--gold);
+            }
+            .badge-gray {
+                background: var(--surface3);
+                color: var(--text-muted);
+            }
+            .badge-blue {
+                background: var(--blue-dim);
+                color: var(--blue);
+            }
+
+            .upload-zone {
+                border: 2px dashed var(--border);
+                border-radius: var(--radius-lg);
+                padding: 2.5rem 1.5rem;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                margin-bottom: 1rem;
+            }
+            .upload-zone:hover,
+            .upload-zone.drag {
+                border-color: var(--gold);
+                background: var(--gold-dim);
+            }
+            .upload-icon {
+                font-size: 2.2rem;
+                margin-bottom: 0.75rem;
+                opacity: 0.55;
+            }
+            .upload-title {
+                font-size: 0.95rem;
+                font-weight: 500;
+                margin-bottom: 0.3rem;
+            }
+            .upload-sub {
+                font-size: 0.78rem;
+                color: var(--text-muted);
+            }
+
+            .donut-wrap {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 2rem;
+                padding: 0.5rem 0;
+                flex-wrap: wrap;
+            }
+            .donut-legend {
+                display: flex;
+                flex-direction: column;
+                gap: 0.65rem;
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.8rem;
+            }
+            .legend-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+            .legend-label {
+                color: var(--text-muted);
+            }
+            .legend-val {
+                color: var(--text);
+                font-weight: 600;
+                margin-left: auto;
+                padding-left: 20px;
+            }
+
+            .empty {
+                text-align: center;
+                padding: 3rem;
+                color: var(--text-muted);
+            }
+            .empty-icon {
+                font-size: 2.5rem;
+                margin-bottom: 0.75rem;
+                opacity: 0.35;
+            }
+            .empty-title {
+                font-size: 0.95rem;
+                font-weight: 500;
+                color: var(--text);
+                margin-bottom: 0.3rem;
+            }
+            .empty-sub {
+                font-size: 0.8rem;
+            }
+
+            footer {
+                border-top: 1px solid var(--border);
+                padding: 1.75rem 2.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 1rem;
+                flex-shrink: 0;
+            }
+            .footer-credit {
+                font-size: 0.82rem;
+                color: var(--text-muted);
+            }
+            .footer-name {
+                color: var(--gold);
+                font-weight: 600;
+            }
+            .footer-tagline {
+                font-size: 0.74rem;
+                color: var(--text-sub);
+                margin-top: 3px;
+            }
+            .footer-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                padding: 7px 14px;
+                border: 1px solid var(--border);
+                border-radius: 50px;
+                color: var(--text-muted);
+                font-size: 0.78rem;
+                text-decoration: none;
+                transition: all 0.2s;
+            }
+            .footer-link:hover {
+                border-color: var(--border-hover);
+                color: var(--gold);
+                background: var(--gold-dim);
+            }
+
+            @media (max-width: 640px) {
+                .navbar {
+                    padding: 0 1rem;
+                }
+                .hero {
+                    padding: 2.5rem 1rem 3.5rem;
+                }
+                .dashboard {
+                    padding: 1.5rem 1rem 3rem;
+                }
+                .form-row {
+                    grid-template-columns: 1fr;
+                }
+                .modal {
+                    padding: 1.5rem;
+                }
+                .stats-grid {
+                    grid-template-columns: 1fr 1fr;
+                }
+                footer {
+                    padding: 1.25rem 1rem;
+                }
+                .toast-container {
+                    top: 90px;
+                    right: 12px;
+                    left: 12px;
+                    align-items: stretch;
+                }
+
+                .toast {
+                    min-width: 0;
+                    width: 100%;
+                    font-size: 0.95rem;
+                    padding: 18px;
+                }
+
+                .toast-title {
+                    font-size: 0.95rem;
+                }
+
+                .toast-msg {
+                    font-size: 0.9rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+
+        <script type="text/babel">
+            const { useState, useEffect, useRef, useCallback } = React;
+
+            // ── TOAST ──────────────────────────────────────────────────────
+            let _tid = 0;
+            let _setToasts = null;
+
+            function toast(type, title, msg, ms = 4500) {
+                if (!_setToasts) return;
+                const id = ++_tid;
+                _setToasts((p) => [
+                    ...p,
+                    { id, type, title, msg, exiting: false },
+                ]);
+                setTimeout(() => dismiss(id), ms);
+            }
+            function dismiss(id) {
+                if (!_setToasts) return;
+                _setToasts((p) =>
+                    p.map((t) => (t.id === id ? { ...t, exiting: true } : t)),
+                );
+                setTimeout(
+                    () => _setToasts((p) => p.filter((t) => t.id !== id)),
+                    280,
+                );
+            }
+
+            function ToastContainer() {
+                const [toasts, setToasts] = useState([]);
+                _setToasts = setToasts;
+                const icons = {
+                    success: "✓",
+                    error: "✕",
+                    warning: "⚠",
+                    info: "ℹ",
+                };
+                return (
+                    <div className="toast-container">
+                        {toasts.map((t) => (
+                            <div
+                                key={t.id}
+                                className={`toast toast-${t.type}${t.exiting ? " exiting" : ""}`}
+                            >
+                                <span className="toast-icon">
+                                    {icons[t.type]}
+                                </span>
+                                <div className="toast-body">
+                                    <div className="toast-title">{t.title}</div>
+                                    {t.msg && (
+                                        <div className="toast-msg">{t.msg}</div>
+                                    )}
+                                </div>
+                                <button
+                                    className="toast-close"
+                                    onClick={() => dismiss(t.id)}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            // ── API ─────────────────────────────────────────────────────────
+            const BASE = window.location.origin;
+
+            async function api(path, opts = {}) {
+                const token = localStorage.getItem("inviteToken");
+                const headers = { ...(opts.headers || {}) };
+                if (token) headers["Authorization"] = `Bearer ${token}`;
+                if (opts.json) {
+                    headers["Content-Type"] = "application/json";
+                    opts.body = JSON.stringify(opts.json);
+                    delete opts.json;
+                }
+                const res = await fetch(BASE + path, { ...opts, headers });
+                if (!res.ok) {
+                    const err = await res
+                        .json()
+                        .catch(() => ({ detail: res.statusText }));
+                    throw new Error(err.detail || "Request failed");
+                }
+                const ct = res.headers.get("content-type") || "";
+                return ct.includes("json") ? res.json() : res.blob();
+            }
+
+            // ── MODAL ───────────────────────────────────────────────────────
+            function Modal({ onClose, title, sub, children, large }) {
+                useEffect(() => {
+                    const h = (e) => e.key === "Escape" && onClose();
+                    window.addEventListener("keydown", h);
+                    return () => window.removeEventListener("keydown", h);
+                }, [onClose]);
+                return (
+                    <div
+                        className="modal-overlay"
+                        onClick={(e) =>
+                            e.target === e.currentTarget && onClose()
+                        }
+                    >
+                        <div className={`modal${large ? " modal-lg" : ""}`}>
+                            <button className="modal-close" onClick={onClose}>
+                                ×
+                            </button>
+                            {title && (
+                                <>
+                                    <h2 className="modal-title">{title}</h2>
+                                    {sub && <p className="modal-sub">{sub}</p>}
+                                </>
+                            )}
+                            {children}
+                        </div>
+                    </div>
+                );
+            }
+
+            // ── AUTH MODAL ──────────────────────────────────────────────────
+            function AuthModal({ mode: init, onClose, onLogin }) {
+                const [mode, setMode] = useState(init);
+                const [busy, setBusy] = useState(false);
+                const [form, setForm] = useState({
+                    email: "",
+                    password: "",
+                    first_name: "",
+                    last_name: "",
+                });
+                const set = (k) => (e) =>
+                    setForm((p) => ({ ...p, [k]: e.target.value }));
+
+                const doLogin = async () => {
+                    setBusy(true);
+                    try {
+                        const fd = new FormData();
+                        fd.append("username", form.email);
+                        fd.append("password", form.password);
+                        const data = await api("/auth/login", {
+                            method: "POST",
+                            body: fd,
+                        });
+                        localStorage.setItem("inviteToken", data.access_token);
+                        localStorage.setItem("inviteEmail", form.email);
+                        toast(
+                            "success",
+                            "Welcome back!",
+                            "Redirecting to dashboard…",
+                        );
+                        onLogin(form.email);
+                        onClose();
+                    } catch (e) {
+                        toast("error", "Login failed", e.message);
+                    } finally {
+                        setBusy(false);
+                    }
+                };
+
+                const doRegister = async () => {
+                    setBusy(true);
+                    try {
+                        await api("/auth/register", {
+                            method: "POST",
+                            json: {
+                                email: form.email,
+                                password: form.password,
+                                first_name: form.first_name,
+                                last_name: form.last_name,
+                            },
+                        });
+                        toast(
+                            "success",
+                            "Registered!",
+                            "Your account is pending activation by an admin.",
+                        );
+                        setMode("login");
+                    } catch (e) {
+                        toast("error", "Registration failed", e.message);
+                    } finally {
+                        setBusy(false);
+                    }
+                };
+
+                const handleKey = (e) => {
+                    if (e.key === "Enter")
+                        mode === "login" ? doLogin() : doRegister();
+                };
+
+                return (
+                    <Modal
+                        onClose={onClose}
+                        title={
+                            mode === "login" ? "Welcome Back" : "Create Account"
+                        }
+                        sub={
+                            mode === "login"
+                                ? "Sign in to manage your events"
+                                : "Register as an event host"
+                        }
+                    >
+                        {mode === "register" && (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">
+                                        First Name
+                                    </label>
+                                    <input
+                                        className="form-input"
+                                        placeholder="Ahmad"
+                                        value={form.first_name}
+                                        onChange={set("first_name")}
+                                        onKeyDown={handleKey}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">
+                                        Last Name
+                                    </label>
+                                    <input
+                                        className="form-input"
+                                        placeholder="Al Ashery"
+                                        value={form.last_name}
+                                        onChange={set("last_name")}
+                                        onKeyDown={handleKey}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <div className="form-group">
+                            <label className="form-label">Email Address</label>
+                            <input
+                                className="form-input"
+                                type="email"
+                                placeholder="you@example.com"
+                                value={form.email}
+                                onChange={set("email")}
+                                onKeyDown={handleKey}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Password</label>
+                            <input
+                                className="form-input"
+                                type="password"
+                                placeholder="••••••••"
+                                value={form.password}
+                                onChange={set("password")}
+                                onKeyDown={handleKey}
+                            />
+                        </div>
+                        <button
+                            className="btn btn-gold btn-full"
+                            style={{ marginTop: "0.5rem" }}
+                            disabled={busy}
+                            onClick={mode === "login" ? doLogin : doRegister}
+                        >
+                            {busy ? (
+                                <>
+                                    <span className="spinner" />
+                                    {mode === "login"
+                                        ? " Signing in…"
+                                        : " Creating account…"}
+                                </>
+                            ) : mode === "login" ? (
+                                "Sign In"
+                            ) : (
+                                "Create Account"
+                            )}
+                        </button>
+                        <div className="form-divider">or</div>
+                        <div className="form-switch">
+                            {mode === "login" ? (
+                                <>
+                                    No account?{" "}
+                                    <span onClick={() => setMode("register")}>
+                                        Register here
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    Have an account?{" "}
+                                    <span onClick={() => setMode("login")}>
+                                        Sign in
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    </Modal>
+                );
+            }
+
+            // ── QR SCANNER SECTION ──────────────────────────────────────────
+            function ScannerSection() {
+                const [scanning, setScanning] = useState(false);
+                const [starting, setStarting] = useState(false);
+                const scannerRef = useRef(null);
+                const cooldownRef = useRef({});
+                const COOLDOWN = 1000;
+
+                const stop = useCallback(() => {
+                    if (scannerRef.current) {
+                        scannerRef.current.stop().catch(() => {});
+                        scannerRef.current = null;
+                    }
+                    setScanning(false);
+                }, []);
+
+                const onScan = useCallback(async (code) => {
+                    const now = Date.now();
+                    if (
+                        cooldownRef.current[code] &&
+                        now - cooldownRef.current[code] < COOLDOWN
+                    )
+                        return;
+                    cooldownRef.current[code] = now;
+                    try {
+                        const res = await fetch(BASE + "/checkin", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ code }),
+                        });
+                        const data = await res
+                            .json()
+                            .catch(() => ({ detail: "Unknown error" }));
+                        const msg = data.detail || "";
+                        if (res.ok) {
+                            toast(
+                                "success",
+                                "✓ Guest Checked In",
+                                "Guest successfully checked in.",
+                            );
+                        } else if (res.status === 400) {
+                            toast("warning", "Already Checked In", msg);
+                        } else if (res.status === 404) {
+                            toast("error", "Guest Not Found", msg);
+                        } else {
+                            toast(
+                                "error",
+                                `Check-In Failed (${res.status})`,
+                                msg,
+                            );
+                        }
+                    } catch {
+                        toast(
+                            "error",
+                            "Network Error",
+                            "Could not reach the server.",
+                        );
+                    }
+                }, []);
+
+                const start = useCallback(async () => {
+                    setStarting(true);
+                    try {
+                        const scanner = new Html5Qrcode("qr-reader");
+                        scannerRef.current = scanner;
+                        await scanner.start(
+                            { facingMode: "environment" },
+                            {
+                                fps: 20,
+                                qrbox: { width: 280, height: 280 },
+                                aspectRatio: 1.333,
+                                experimentalFeatures: {
+                                    useBarCodeDetectorIfSupported: true, // ← native browser API, much faster
+                                },
+                                rememberLastUsedCamera: true,
+                                supportedScanTypes: [0], // ← 0 = QR only, skips barcode scanning overhead
+                            },
+                            onScan,
+                            () => {},
+                        );
+                        setScanning(true);
+                        toast(
+                            "info",
+                            "Scanner Active",
+                            "Point camera at a guest QR code.",
+                        );
+                    } catch (e) {
+                        toast(
+                            "error",
+                            "Camera Error",
+                            e.message || "Cannot access camera.",
+                        );
+                    } finally {
+                        setStarting(false);
+                    }
+                }, [onScan]);
+
+                useEffect(() => () => stop(), [stop]);
+
+                return (
+                    <section className="hero">
+                        <p className="hero-eyebrow">
+                            ✦ Instant Guest Check-In ✦
+                        </p>
+                        <h1 className="hero-title">
+                            Scan &amp; <em>Verify</em>
+                            <br />
+                            Your Guests
+                        </h1>
+                        <p className="hero-sub">
+                            QR-powered check-in with instant toast feedback. No
+                            login required. A 1-second cooldown prevents
+                            duplicate scans of the same code.
+                        </p>
+                        <div
+                            className={`scanner-card${scanning ? " scanning" : ""}`}
+                        >
+                            <div className="scanner-bar">
+                                <span
+                                    className={`scanner-badge ${scanning ? "active" : "idle"}`}
+                                >
+                                    <span className="badge-dot" />
+                                    {scanning
+                                        ? "Live — Scanning"
+                                        : "Camera Off"}
+                                </span>
+                                <span className="scanner-hint">
+                                    1s cooldown per code
+                                </span>
+                            </div>
+                            <div className="scanner-viewport">
+                                <div className="corner corner-tl" />
+                                <div className="corner corner-tr" />
+                                <div className="corner corner-bl" />
+                                <div className="corner corner-br" />
+                                <div className="scan-line" />
+                                <div
+                                    id="qr-reader"
+                                    style={{ width: "100%", height: "100%" }}
+                                />
+                                {!scanning && (
+                                    <div className="scanner-placeholder">
+                                        <div className="scanner-placeholder-icon">
+                                            ▣
+                                        </div>
+                                        <div className="scanner-placeholder-text">
+                                            Camera feed appears here
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            {!scanning ? (
+                                <button
+                                    className="btn btn-gold btn-lg btn-full"
+                                    onClick={start}
+                                    disabled={starting}
+                                >
+                                    {starting ? (
+                                        <>
+                                            <span className="spinner" />{" "}
+                                            Initializing camera…
+                                        </>
+                                    ) : (
+                                        "📷 Start Scanning"
+                                    )}
+                                </button>
+                            ) : (
+                                <button
+                                    className="btn btn-danger btn-lg btn-full"
+                                    onClick={stop}
+                                >
+                                    ⏹ Stop Scanner
+                                </button>
+                            )}
+                        </div>
+                    </section>
+                );
+            }
+
+            // ── DONUT CHART ─────────────────────────────────────────────────
+            function DonutChart({ checked, total }) {
+                const pct = total > 0 ? (checked / total) * 100 : 0;
+                const r = 52,
+                    circ = 2 * Math.PI * r;
+                const fill = (pct / 100) * circ;
+                return (
+                    <div className="donut-wrap">
+                        <svg
+                            width="140"
+                            height="140"
+                            style={{
+                                transform: "rotate(-90deg)",
+                                flexShrink: 0,
+                            }}
+                        >
+                            <defs>
+                                <linearGradient
+                                    id="dg"
+                                    x1="0%"
+                                    y1="0%"
+                                    x2="100%"
+                                    y2="0%"
+                                >
+                                    <stop offset="0%" stopColor="var(--gold)" />
+                                    <stop
+                                        offset="100%"
+                                        stopColor="var(--gold-light)"
+                                    />
+                                </linearGradient>
+                            </defs>
+                            <circle
+                                cx="70"
+                                cy="70"
+                                r={r}
+                                fill="none"
+                                stroke="var(--surface3)"
+                                strokeWidth="11"
+                            />
+                            <circle
+                                cx="70"
+                                cy="70"
+                                r={r}
+                                fill="none"
+                                stroke="url(#dg)"
+                                strokeWidth="11"
+                                strokeDasharray={`${fill} ${circ - fill}`}
+                                strokeLinecap="round"
+                                style={{
+                                    transition:
+                                        "stroke-dasharray 0.9s cubic-bezier(0.16,1,0.3,1)",
+                                }}
+                            />
+                            <text
+                                x="70"
+                                y="66"
+                                textAnchor="middle"
+                                fill="var(--gold)"
+                                style={{
+                                    font: "700 1.35rem 'Cormorant Garamond',serif",
+                                    transform: "rotate(90deg)",
+                                    transformOrigin: "70px 70px",
+                                }}
+                            >
+                                {Math.round(pct)}%
+                            </text>
+                            <text
+                                x="70"
+                                y="79"
+                                textAnchor="middle"
+                                fill="var(--text-muted)"
+                                style={{
+                                    font: "400 0.6rem 'Jost',sans-serif",
+                                    transform: "rotate(90deg)",
+                                    transformOrigin: "70px 70px",
+                                }}
+                            >
+                                ARRIVED
+                            </text>
+                        </svg>
+                        <div className="donut-legend">
+                            {[
+                                {
+                                    c: "var(--gold)",
+                                    l: "Checked In",
+                                    v: checked,
+                                },
+                                {
+                                    c: "var(--surface3)",
+                                    l: "Pending",
+                                    v: total - checked,
+                                },
+                                {
+                                    c: "var(--border-hover)",
+                                    l: "Total",
+                                    v: total,
+                                },
+                            ].map((i) => (
+                                <div key={i.l} className="legend-item">
+                                    <div
+                                        className="legend-dot"
+                                        style={{ background: i.c }}
+                                    />
+                                    <span className="legend-label">{i.l}</span>
+                                    <span className="legend-val">{i.v}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            // ── EVENT DETAIL MODAL ───────────────────────────────────────────
+            function EventDetail({ eventId, eventName, onClose }) {
+                const [guests, setGuests] = useState(null);
+                const [images, setImages] = useState([]);
+                const [search, setSearch] = useState("");
+                const [filter, setFilter] = useState("all");
+                const [downloading, setDownloading] = useState({});
+
+                useEffect(() => {
+                    // Fetch guests and images in parallel
+                    api(`/auth/invitation_data/${eventId}`)
+                        .then(setGuests)
+                        .catch((e) => toast("error", "Load failed", e.message));
+
+                    api(`/auth/images_files/${eventId}`)
+                        .then((d) => setImages(d.images || []))
+                        .catch(() => setImages([])); // silently ignore if no images folder
+                }, [eventId]);
+
+                // Find the image filename for a given guest code
+                // Image filenames are expected to contain the guest code somewhere in the name
+                const findGuestImage = (code) => {
+                    if (!code) return null;
+                    const codeStr = String(code);
+                    return images.find((img) => img.includes(codeStr)) || null;
+                };
+
+                const downloadImage = async (imgName, guestName) => {
+                    setDownloading((p) => ({ ...p, [imgName]: true }));
+                    try {
+                        const blob = await api(
+                            `/auth/image_file/${eventId}?img_name=${encodeURIComponent(imgName)}`,
+                        );
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${guestName || imgName}.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast(
+                            "success",
+                            "Downloaded",
+                            guestName ? `Image for ${guestName}` : imgName,
+                        );
+                    } catch (e) {
+                        toast("error", "Download failed", e.message);
+                    } finally {
+                        setDownloading((p) => ({ ...p, [imgName]: false }));
+                    }
+                };
+
+                const total = guests?.length || 0;
+                const checked = guests?.filter((g) => g.checked_in).length || 0;
+
+                const filtered = guests
+                    ? guests.filter((g) => {
+                          const ms =
+                              g.name
+                                  .toLowerCase()
+                                  .includes(search.toLowerCase()) ||
+                              String(g.code).includes(search);
+                          const mf =
+                              filter === "all" ||
+                              (filter === "in" && g.checked_in) ||
+                              (filter === "out" && !g.checked_in);
+                          return ms && mf;
+                      })
+                    : [];
+
+                return (
+                    <Modal
+                        onClose={onClose}
+                        large
+                        title={eventName}
+                        sub={`Event ID: ${eventId}`}
+                    >
+                        {!guests ? (
+                            <div className="loading-center">
+                                <span className="spinner" />
+                                Loading guest list…
+                            </div>
+                        ) : (
+                            <>
+                                <div
+                                    style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "1fr 1fr",
+                                        gap: "1rem",
+                                        marginBottom: "1.25rem",
+                                    }}
+                                >
+                                    <div
+                                        className="card"
+                                        style={{ gridColumn: "1/-1" }}
+                                    >
+                                        <div className="card-label">
+                                            Attendance Overview
+                                        </div>
+                                        <DonutChart
+                                            checked={checked}
+                                            total={total}
+                                        />
+                                    </div>
+                                    <div className="card">
+                                        <div className="card-label">
+                                            Checked In
+                                        </div>
+                                        <div
+                                            className="card-val"
+                                            style={{ color: "var(--green)" }}
+                                        >
+                                            {checked}
+                                        </div>
+                                        <div className="card-sub">
+                                            guests arrived
+                                        </div>
+                                    </div>
+                                    <div className="card">
+                                        <div className="card-label">
+                                            Pending
+                                        </div>
+                                        <div
+                                            className="card-val"
+                                            style={{
+                                                color: "var(--text-muted)",
+                                            }}
+                                        >
+                                            {total - checked}
+                                        </div>
+                                        <div className="card-sub">
+                                            not yet arrived
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: "0.6rem",
+                                        marginBottom: "0.9rem",
+                                        flexWrap: "wrap",
+                                    }}
+                                >
+                                    <input
+                                        className="form-input"
+                                        placeholder="Search name or code…"
+                                        value={search}
+                                        onChange={(e) =>
+                                            setSearch(e.target.value)
+                                        }
+                                        style={{ flex: 1, minWidth: "140px" }}
+                                    />
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            gap: "0.3rem",
+                                        }}
+                                    >
+                                        {[
+                                            ["all", "All"],
+                                            ["in", "✓ Arrived"],
+                                            ["out", "○ Pending"],
+                                        ].map(([v, l]) => (
+                                            <button
+                                                key={v}
+                                                onClick={() => setFilter(v)}
+                                                className={`btn btn-sm ${filter === v ? "btn-gold" : "btn-surface"}`}
+                                            >
+                                                {l}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div
+                                    className="table-wrap"
+                                    style={{
+                                        maxHeight: "340px",
+                                        overflowY: "auto",
+                                    }}
+                                >
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Name</th>
+                                                <th>Status</th>
+                                                <th>Active</th>
+                                                <th>Image</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filtered.length === 0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan="5"
+                                                        style={{
+                                                            textAlign: "center",
+                                                            color: "var(--text-muted)",
+                                                            padding: "2rem",
+                                                        }}
+                                                    >
+                                                        No guests match
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filtered.map((g) => {
+                                                    const imgFile =
+                                                        findGuestImage(g.code);
+                                                    return (
+                                                        <tr key={g.id}>
+                                                            <td>
+                                                                <span
+                                                                    style={{
+                                                                        fontFamily:
+                                                                            "monospace",
+                                                                        color: "var(--text-muted)",
+                                                                        fontSize:
+                                                                            "0.8rem",
+                                                                    }}
+                                                                >
+                                                                    {g.code}
+                                                                </span>
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    fontWeight: 500,
+                                                                }}
+                                                            >
+                                                                {g.name}
+                                                            </td>
+                                                            <td>
+                                                                <span
+                                                                    className={`badge ${g.checked_in ? "badge-green" : "badge-red"}`}
+                                                                >
+                                                                    {g.checked_in
+                                                                        ? "✓ Arrived"
+                                                                        : "○ Pending"}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span
+                                                                    className={`badge ${g.is_active ? "badge-gold" : "badge-gray"}`}
+                                                                >
+                                                                    {g.is_active
+                                                                        ? "Active"
+                                                                        : "Inactive"}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {imgFile ? (
+                                                                    <button
+                                                                        className="btn btn-img btn-sm"
+                                                                        onClick={() =>
+                                                                            downloadImage(
+                                                                                imgFile,
+                                                                                g.name,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            downloading[
+                                                                                imgFile
+                                                                            ]
+                                                                        }
+                                                                        title={`Download image: ${imgFile}`}
+                                                                    >
+                                                                        {downloading[
+                                                                            imgFile
+                                                                        ] ? (
+                                                                            <>
+                                                                                <span
+                                                                                    className="spinner"
+                                                                                    style={{
+                                                                                        width: 11,
+                                                                                        height: 11,
+                                                                                        borderWidth: 1.5,
+                                                                                    }}
+                                                                                />
+                                                                            </>
+                                                                        ) : (
+                                                                            "↓ PNG"
+                                                                        )}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span
+                                                                        style={{
+                                                                            color: "var(--text-sub)",
+                                                                            fontSize:
+                                                                                "0.75rem",
+                                                                        }}
+                                                                    >
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Images summary badge */}
+                                {images.length > 0 && (
+                                    <div
+                                        style={{
+                                            marginTop: "0.75rem",
+                                            fontSize: "0.75rem",
+                                            color: "var(--text-muted)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "6px",
+                                        }}
+                                    >
+                                        <span className="badge badge-blue">
+                                            {images.length} image
+                                            {images.length !== 1 ? "s" : ""}
+                                        </span>
+                                        available for this event
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </Modal>
+                );
+            }
+
+            // ── UPLOAD MODAL ─────────────────────────────────────────────────
+            function UploadModal({ onClose, onDone }) {
+                const [name, setName] = useState("");
+                const [file, setFile] = useState(null);
+                const [busy, setBusy] = useState(false);
+                const [drag, setDrag] = useState(false);
+                const ref = useRef();
+
+                const pickFile = (f) => {
+                    if (f?.name?.endsWith(".xlsx")) setFile(f);
+                    else
+                        toast(
+                            "warning",
+                            "Invalid file",
+                            "Please select an .xlsx Excel file.",
+                        );
+                };
+
+                const submit = async () => {
+                    if (!name.trim())
+                        return toast(
+                            "warning",
+                            "Name required",
+                            "Enter an invitation / event name.",
+                        );
+
+                    if (!file)
+                        return toast(
+                            "warning",
+                            "No file selected",
+                            "Please select an .xlsx file.",
+                        );
+
+                    setBusy(true);
+
+                    try {
+                        const fd = new FormData();
+                        fd.append("file", file);
+
+                        // 1️⃣ Upload and get job_id
+                        const { job_id } = await api(
+                            `/auth/process-invitation-file?invitation_name=${encodeURIComponent(name)}`,
+                            { method: "POST", body: fd },
+                        );
+
+                        if (!job_id) throw new Error("Failed to create job.");
+
+                        toast(
+                            "info",
+                            "Processing...",
+                            "Generating invitations...",
+                        );
+
+                        // 2️⃣ Poll for status
+                        let status = "pending";
+                        let error = null;
+
+                        while (status === "pending" || status === "running") {
+                            await new Promise((r) => setTimeout(r, 2000));
+
+                            const data = await api(
+                                `/auth/invitation-job/${job_id}`,
+                            );
+
+                            status = data.status;
+                            error = data.error;
+
+                            if (status === "error") {
+                                throw new Error(error || "Processing failed.");
+                            }
+                        }
+
+                        // 3️⃣ Download when done
+                        if (status === "done") {
+                            const downloadRes = await fetch(
+                                `/auth/invitation-job/${job_id}/download`,
+                            );
+
+                            const blob = await downloadRes.blob();
+
+                            const url = URL.createObjectURL(blob);
+
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${name}_processed.zip`;
+                            a.click();
+
+                            URL.revokeObjectURL(url);
+
+                            toast(
+                                "success",
+                                "Done!",
+                                "Invitations generated & file downloaded.",
+                            );
+
+                            onDone();
+                            onClose();
+                        }
+                    } catch (e) {
+                        toast("error", "Upload failed", e.message);
+                    } finally {
+                        setBusy(false);
+                    }
+                };
+
+                return (
+                    <Modal
+                        onClose={onClose}
+                        title="New Invitation Batch"
+                        sub="Upload an Excel file with 'name' and 'code' columns"
+                    >
+                        <div className="form-group">
+                            <label className="form-label">Event Name</label>
+                            <input
+                                className="form-input"
+                                placeholder="e.g. Annual Gala 2025"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
+                        </div>
+                        <div
+                            className={`upload-zone${drag ? " drag" : ""}`}
+                            onClick={() => ref.current.click()}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                setDrag(true);
+                            }}
+                            onDragLeave={() => setDrag(false)}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                setDrag(false);
+                                pickFile(e.dataTransfer.files[0]);
+                            }}
+                        >
+                            <input
+                                ref={ref}
+                                type="file"
+                                accept=".xlsx"
+                                style={{ display: "none" }}
+                                onChange={(e) => pickFile(e.target.files[0])}
+                            />
+                            <div className="upload-icon">
+                                {file ? "📊" : "📥"}
+                            </div>
+                            <div className="upload-title">
+                                {file
+                                    ? file.name
+                                    : "Drop .xlsx file here or click to browse"}
+                            </div>
+                            <div className="upload-sub">
+                                {file
+                                    ? `${(file.size / 1024).toFixed(1)} KB · Ready to upload`
+                                    : "Only .xlsx files accepted"}
+                            </div>
+                        </div>
+                        <button
+                            className="btn btn-gold btn-full"
+                            disabled={busy}
+                            onClick={submit}
+                        >
+                            {busy ? (
+                                <>
+                                    <span className="spinner" /> Processing &
+                                    generating…
+                                </>
+                            ) : (
+                                "⚡ Generate Invitations"
+                            )}
+                        </button>
+                    </Modal>
+                );
+            }
+
+            // ── DASHBOARD ────────────────────────────────────────────────────
+            function Dashboard({ email }) {
+                const [tab, setTab] = useState("events");
+                const [folders, setFolders] = useState(null);
+                const [files, setFiles] = useState(null);
+                const [guestMap, setGuestMap] = useState({});
+                const [loadingG, setLoadingG] = useState({});
+                const [detail, setDetail] = useState(null);
+                const [showUpload, setShowUpload] = useState(false);
+
+                const loadAll = useCallback(() => {
+                    api("/auth/images_folders")
+                        .then((d) => setFolders(d.folders || []))
+                        .catch(() => setFolders([]));
+                    api("/auth/excel_files")
+                        .then((d) => setFiles(d.files || []))
+                        .catch(() => setFiles([]));
+                }, []);
+
+                useEffect(() => {
+                    loadAll();
+                }, [loadAll]);
+
+                const fetchGuests = useCallback(
+                    async (id) => {
+                        if (guestMap[id] || loadingG[id]) return;
+                        setLoadingG((p) => ({ ...p, [id]: true }));
+                        try {
+                            const g = await api(`/auth/invitation_data/${id}`);
+                            setGuestMap((p) => ({ ...p, [id]: g }));
+                        } catch {}
+                        setLoadingG((p) => ({ ...p, [id]: false }));
+                    },
+                    [guestMap, loadingG],
+                );
+
+                useEffect(() => {
+                    if (folders) folders.forEach(fetchGuests);
+                }, [folders]);
+
+                const downloadFile = async (name) => {
+                    try {
+                        const blob = await api(`/auth/excel_file/${name}`);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = name;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast("success", "Downloaded", name);
+                    } catch (e) {
+                        toast("error", "Download failed", e.message);
+                    }
+                };
+
+                const getEventName = (id) => {
+                    const match = files?.find((f) => f.includes(id));
+                    if (!match) return id.slice(0, 8) + "…";
+                    const parts = match.replace(".xlsx", "").split("_");
+                    return parts.slice(0, -1).join(" ") || id.slice(0, 8) + "…";
+                };
+
+                const allGuests = Object.values(guestMap).flat();
+                const totalG = allGuests.length;
+                const totalIn = allGuests.filter((g) => g.checked_in).length;
+                const totalEvents = folders?.length || 0;
+                const globalPct =
+                    totalG > 0 ? Math.round((totalIn / totalG) * 100) : 0;
+
+                return (
+                    <>
+                        <div className="dashboard">
+                            <div className="dash-header">
+                                <div className="dash-eyebrow">
+                                    ✦ Host Dashboard
+                                </div>
+                                <h2 className="dash-title">
+                                    Welcome,{" "}
+                                    <em
+                                        style={{
+                                            fontFamily: "Cormorant Garamond",
+                                            fontStyle: "italic",
+                                            color: "var(--gold)",
+                                        }}
+                                    >
+                                        {email?.split("@")[0]}
+                                    </em>
+                                </h2>
+                            </div>
+
+                            <div className="stats-grid">
+                                <div className="card">
+                                    <div className="card-label">
+                                        Total Events
+                                    </div>
+                                    <div
+                                        className="card-val"
+                                        style={{ color: "var(--gold)" }}
+                                    >
+                                        {totalEvents}
+                                    </div>
+                                    <div className="card-sub">
+                                        invitation batches
+                                    </div>
+                                </div>
+                                <div className="card">
+                                    <div className="card-label">
+                                        Total Guests
+                                    </div>
+                                    <div className="card-val">{totalG}</div>
+                                    <div className="card-sub">
+                                        across all events
+                                    </div>
+                                </div>
+                                <div className="card">
+                                    <div className="card-label">Checked In</div>
+                                    <div
+                                        className="card-val"
+                                        style={{ color: "var(--green)" }}
+                                    >
+                                        {totalIn}
+                                    </div>
+                                    <div className="card-sub">
+                                        guests arrived
+                                    </div>
+                                </div>
+                                <div className="card">
+                                    <div className="card-label">
+                                        Attendance Rate
+                                    </div>
+                                    <div
+                                        className="card-val"
+                                        style={{
+                                            color:
+                                                globalPct > 70
+                                                    ? "var(--green)"
+                                                    : "var(--text)",
+                                        }}
+                                    >
+                                        {totalG > 0 ? `${globalPct}%` : "—"}
+                                    </div>
+                                    <div className="progress">
+                                        <div
+                                            className="progress-fill"
+                                            style={{ width: `${globalPct}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="tabs">
+                                {[
+                                    ["events", "🗓  Events"],
+                                    ["files", "📁  Files"],
+                                ].map(([v, l]) => (
+                                    <button
+                                        key={v}
+                                        className={`tab${tab === v ? " active" : ""}`}
+                                        onClick={() => setTab(v)}
+                                    >
+                                        {l}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {tab === "events" && (
+                                <div className="section">
+                                    <div className="section-head">
+                                        <h3 className="section-title">
+                                            Your Events
+                                        </h3>
+                                        <button
+                                            className="btn btn-gold btn-sm"
+                                            onClick={() => setShowUpload(true)}
+                                        >
+                                            + New Invitation
+                                        </button>
+                                    </div>
+                                    {!folders ? (
+                                        <div className="loading-center">
+                                            <span className="spinner" />
+                                            Loading events…
+                                        </div>
+                                    ) : folders.length === 0 ? (
+                                        <div className="empty">
+                                            <div className="empty-icon">🗓</div>
+                                            <div className="empty-title">
+                                                No events yet
+                                            </div>
+                                            <div className="empty-sub">
+                                                Upload your first invitation
+                                                list to get started
+                                            </div>
+                                            <button
+                                                className="btn btn-gold"
+                                                style={{ marginTop: "1rem" }}
+                                                onClick={() =>
+                                                    setShowUpload(true)
+                                                }
+                                            >
+                                                Upload Invitation List
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="events-grid">
+                                            {folders.map((id) => {
+                                                const g = guestMap[id];
+                                                const name = getEventName(id);
+                                                const tot = g?.length || 0;
+                                                const chk =
+                                                    g?.filter(
+                                                        (x) => x.checked_in,
+                                                    ).length || 0;
+                                                const pct =
+                                                    tot > 0
+                                                        ? Math.round(
+                                                              (chk / tot) * 100,
+                                                          )
+                                                        : 0;
+                                                return (
+                                                    <div
+                                                        key={id}
+                                                        className="event-card"
+                                                    >
+                                                        <div className="event-name">
+                                                            {name}
+                                                        </div>
+                                                        <div className="event-id">
+                                                            {id}
+                                                        </div>
+                                                        {loadingG[id] ? (
+                                                            <div
+                                                                style={{
+                                                                    display:
+                                                                        "flex",
+                                                                    gap: "6px",
+                                                                    alignItems:
+                                                                        "center",
+                                                                    color: "var(--text-muted)",
+                                                                    fontSize:
+                                                                        "0.78rem",
+                                                                    marginBottom:
+                                                                        "0.75rem",
+                                                                }}
+                                                            >
+                                                                <span
+                                                                    className="spinner"
+                                                                    style={{
+                                                                        width: 12,
+                                                                        height: 12,
+                                                                        borderWidth: 1.5,
+                                                                    }}
+                                                                />
+                                                                Loading…
+                                                            </div>
+                                                        ) : g ? (
+                                                            <>
+                                                                <div className="event-meta">
+                                                                    <div className="event-stat">
+                                                                        <strong>
+                                                                            {
+                                                                                tot
+                                                                            }
+                                                                        </strong>{" "}
+                                                                        Guests
+                                                                    </div>
+                                                                    <div className="event-stat">
+                                                                        <strong
+                                                                            style={{
+                                                                                color: "var(--green)",
+                                                                            }}
+                                                                        >
+                                                                            {
+                                                                                chk
+                                                                            }
+                                                                        </strong>{" "}
+                                                                        Arrived
+                                                                    </div>
+                                                                    <div className="event-stat">
+                                                                        <strong
+                                                                            style={{
+                                                                                color: "var(--gold)",
+                                                                            }}
+                                                                        >
+                                                                            {
+                                                                                pct
+                                                                            }
+                                                                            %
+                                                                        </strong>
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    className="progress"
+                                                                    style={{
+                                                                        marginBottom:
+                                                                            "0.9rem",
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        className="progress-fill"
+                                                                        style={{
+                                                                            width: `${pct}%`,
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        ) : null}
+                                                        <div className="event-actions">
+                                                            <button
+                                                                className="btn btn-outline btn-sm"
+                                                                onClick={() =>
+                                                                    setDetail({
+                                                                        id,
+                                                                        name,
+                                                                    })
+                                                                }
+                                                            >
+                                                                View Guests
+                                                            </button>
+                                                            {files?.find((f) =>
+                                                                f.includes(id),
+                                                            ) && (
+                                                                <button
+                                                                    className="btn btn-surface btn-sm"
+                                                                    onClick={() =>
+                                                                        downloadFile(
+                                                                            files.find(
+                                                                                (
+                                                                                    f,
+                                                                                ) =>
+                                                                                    f.includes(
+                                                                                        id,
+                                                                                    ),
+                                                                            ),
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    ↓ Excel
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {tab === "files" && (
+                                <div className="section">
+                                    <div className="section-head">
+                                        <h3 className="section-title">
+                                            Excel Files
+                                        </h3>
+                                        <button
+                                            className="btn btn-gold btn-sm"
+                                            onClick={() => setShowUpload(true)}
+                                        >
+                                            + Upload
+                                        </button>
+                                    </div>
+                                    {!files ? (
+                                        <div className="loading-center">
+                                            <span className="spinner" />
+                                            Loading files…
+                                        </div>
+                                    ) : files.length === 0 ? (
+                                        <div className="empty">
+                                            <div className="empty-icon">📊</div>
+                                            <div className="empty-title">
+                                                No files yet
+                                            </div>
+                                            <div className="empty-sub">
+                                                Processed Excel files appear
+                                                here
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        files.map((f) => (
+                                            <div key={f} className="file-item">
+                                                <div className="file-info">
+                                                    <span className="file-icon">
+                                                        📊
+                                                    </span>
+                                                    <div>
+                                                        <div className="file-name">
+                                                            {f
+                                                                .replace(
+                                                                    ".xlsx",
+                                                                    "",
+                                                                )
+                                                                .split("_")
+                                                                .slice(0, -1)
+                                                                .join(" ") || f}
+                                                        </div>
+                                                        <div className="file-meta">
+                                                            {f}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    className="btn btn-surface btn-sm"
+                                                    onClick={() =>
+                                                        downloadFile(f)
+                                                    }
+                                                >
+                                                    ↓ Download
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {showUpload && (
+                            <UploadModal
+                                onClose={() => setShowUpload(false)}
+                                onDone={loadAll}
+                            />
+                        )}
+                        {detail && (
+                            <EventDetail
+                                eventId={detail.id}
+                                eventName={detail.name}
+                                onClose={() => setDetail(null)}
+                            />
+                        )}
+                    </>
+                );
+            }
+
+            // ── ROOT ─────────────────────────────────────────────────────────
+            function App() {
+                const [authModal, setAuthModal] = useState(null);
+                const [user, setUser] = useState(() =>
+                    localStorage.getItem("inviteEmail"),
+                );
+                const [view, setView] = useState("scanner");
+
+                const handleLogin = (email) => {
+                    setUser(email);
+                    setView("dashboard");
+                };
+                const handleLogout = () => {
+                    localStorage.removeItem("inviteToken");
+                    localStorage.removeItem("inviteEmail");
+                    setUser(null);
+                    setView("scanner");
+                    toast("info", "Signed out", "See you next time!");
+                };
+
+                useEffect(() => {
+                    if (user) {
+                        api("/auth/validate-token")
+                            .then(() => setView("dashboard"))
+                            .catch(() => handleLogout());
+                    }
+                }, []);
+
+                return (
+                    <>
+                        <ToastContainer />
+                        <nav className="navbar">
+                            <span
+                                className="nav-logo"
+                                onClick={() =>
+                                    setView(user ? "dashboard" : "scanner")
+                                }
+                            >
+                                Invité
+                            </span>
+                            <div className="nav-actions">
+                                {user ? (
+                                    <>
+                                        <button
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() =>
+                                                setView(
+                                                    view === "scanner"
+                                                        ? "dashboard"
+                                                        : "scanner",
+                                                )
+                                            }
+                                        >
+                                            {view === "scanner"
+                                                ? "📊 Dashboard"
+                                                : "📷 Scanner"}
+                                        </button>
+                                        <div className="nav-user">
+                                            <div className="nav-avatar">
+                                                {user.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="nav-email">
+                                                {user}
+                                            </span>
+                                        </div>
+                                        <button
+                                            className="btn btn-danger btn-sm"
+                                            onClick={handleLogout}
+                                        >
+                                            Sign Out
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() =>
+                                                setAuthModal("login")
+                                            }
+                                        >
+                                            Sign In
+                                        </button>
+                                        <button
+                                            className="btn btn-gold btn-sm"
+                                            onClick={() =>
+                                                setAuthModal("register")
+                                            }
+                                        >
+                                            Register
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </nav>
+                        <main style={{ flex: 1 }}>
+                            {view === "scanner" ? (
+                                <ScannerSection />
+                            ) : (
+                                <Dashboard email={user} />
+                            )}
+                        </main>
+                        <footer>
+                            <div className="footer-left">
+                                <div className="footer-credit">
+                                    Crafted by{" "}
+                                    <span className="footer-name">
+                                        Ahmad Al Ashery
+                                    </span>
+                                </div>
+                                <div className="footer-tagline">
+                                    Open to event-tech consulting & custom
+                                    development opportunities
+                                </div>
+                            </div>
+                            <a
+                                href="https://www.linkedin.com/in/ahmad-al-ashery/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="footer-link"
+                            >
+                                <svg
+                                    width="15"
+                                    height="15"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                >
+                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                                </svg>
+                                Connect on LinkedIn
+                            </a>
+                        </footer>
+                        {authModal && (
+                            <AuthModal
+                                mode={authModal}
+                                onClose={() => setAuthModal(null)}
+                                onLogin={handleLogin}
+                            />
+                        )}
+                    </>
+                );
+            }
+
+            ReactDOM.createRoot(document.getElementById("root")).render(
+                <App />,
+            );
+        </script>
+    </body>
+</html>
