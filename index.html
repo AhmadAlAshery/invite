@@ -1525,7 +1525,7 @@
                 const [starting, setStarting] = useState(false);
                 const scannerRef = useRef(null);
                 const cooldownRef = useRef({});
-                const COOLDOWN = 1000;
+                const COOLDOWN = 3000;
 
                 const stop = useCallback(() => {
                     if (scannerRef.current) {
@@ -1630,7 +1630,7 @@
                         </h1>
                         <p className="hero-sub">
                             QR-powered check-in with instant toast feedback. No
-                            login required. A 1-second cooldown prevents
+                            login required. A 3-seconds cooldown prevents
                             duplicate scans of the same code.
                         </p>
                         <div
@@ -1646,7 +1646,7 @@
                                         : "Camera Off"}
                                 </span>
                                 <span className="scanner-hint">
-                                    1s cooldown per code
+                                    3s cooldown per code
                                 </span>
                             </div>
                             <div className="scanner-viewport">

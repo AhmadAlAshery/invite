@@ -4,14 +4,20 @@ from typing import Generator
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.declarative import declarative_base
 from pathlib import Path
+import os
 
 # Ensure db directory exists
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = BASE_DIR / "sqlite.db"
+DB_URI = os.getenv(
+    "DATABASE_URL",
+    "postgresql://invite_a0ry_user:OKqLtN18hMnVKMMVZWBpbklkjMsJxhSQ@dpg-d6ffi9ggjchc73fnge1g-a.frankfurt-postgres.render.com/invite_a0ry",
+)
 Base = declarative_base()
 
 engine = create_engine(
     f"sqlite:///{DB_PATH}",
+    # ,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
     echo=False,

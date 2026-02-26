@@ -13,7 +13,6 @@ from pathlib import Path
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from src.auth.model import Guest, Job
-import uuid
 from fastapi.concurrency import run_in_threadpool
 from src.core.session import SessionLocal
 
@@ -192,47 +191,37 @@ def download_job_result(
 
 @router.get("/excel_files")
 async def list_files(
+    db: Session = Depends(get_db),
     current_host: Host = Depends(get_current_host),
 ):
-    base_path = Path("src") / "excel"
 
-    if not base_path.exists() or not base_path.is_dir():
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    files = files = [
-        f.name
-        for f in base_path.iterdir()
-        if f.is_file() and f.suffix.lower() == ".zip"
-    ]
-
+    files = db.query(Guest.event_name, Guest.event_id).distinct().all()
+    if not files:
+        return
+    files = [f"{i.event_name}_{i.event_id}.zip" for i in files]
     return {"files": files}
 
 
 @router.get("/images_folders")
 async def list_folders(
+    db: Session = Depends(get_db),
     current_host: Host = Depends(get_current_host),
 ):
-    base_path = Path("src") / "images"
-
-    if not base_path.exists() or not base_path.is_dir():
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    folders = [f.name for f in base_path.iterdir() if f.is_dir()]
-
+    folders = db.query(Guest.event_name, Guest.event_id).distinct().all()
+    if not folders:
+        return
+    folders = [i.event_id for i in folders]
     return {"folders": folders}
 
 
 @router.get("/images_files/{id}")
 async def list_images(
     id: str | int,
+    db: Session = Depends(get_db),
     current_host: Host = Depends(get_current_host),
 ):
-    base_path = Path("src") / f"images/{id}"
-
-    if not base_path.exists() or not base_path.is_dir():
-        raise HTTPException(status_code=404, detail="Folder not found")
-
-    images = [f.name for f in base_path.iterdir() if f.is_file()]
+    images = db.query(Guest).filter(Guest.event_id == id).all()
+    images = [f"{i.code}-{i.name}_{i.id}" for i in images]
 
     return {"images": images}
 
@@ -243,7 +232,7 @@ async def get_image(
     img_name: str | int,
     current_host: Host = Depends(get_current_host),
 ):
-    img_path = Path("src") / f"images/{id}/{img_name}"
+    img_path = Path("src") / f"images/{id}/{img_name}.png"
     return FileResponse(
         path=img_path,
         filename="".join(str(img_path.name).split("_")[:-1]) + ".png",

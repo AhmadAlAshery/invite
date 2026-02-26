@@ -10,3 +10,4 @@ pandas==3.0.0
 pillow==12.1.1
 qrcode==8.2
 uv==0.10.6
+boto3==1.42.57
