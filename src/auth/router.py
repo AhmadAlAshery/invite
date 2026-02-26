@@ -8,6 +8,8 @@ from fastapi import (
     HTTPException,
     BackgroundTasks,
 )
+from starlette.background import BackgroundTask
+import os
 from fastapi.responses import FileResponse
 from pathlib import Path
 from fastapi.security import OAuth2PasswordRequestForm
@@ -24,10 +26,20 @@ from src.auth.schema import (
     HostCreate,
     HostResponse,
 )
-
+import tempfile
+import boto3
 from src.auth.repository import get_current_host
 from src.auth.model import Host
 
+
+BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
+    aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+    region_name="eu-central-1",
+)
 
 router = APIRouter()
 auth_service = AuthService()
@@ -179,13 +191,24 @@ def download_job_result(
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job or job.status != "done":
         raise HTTPException(status_code=400, detail="Not ready")
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_file.close()
+    # delete the zip file
+    base_path = Path("src") / f"excel/{(job.result).split('/')[-1]}"
+    if base_path.exists():
+        base_path.unlink()
+
+    try:
+        s3.download_file(BUCKET_NAME, job.result, temp_file.name)
+    except Exception:
+        os.remove(temp_file.name)
+        raise
+
     return FileResponse(
-        path=job.result,
-        filename=Path(job.result).name,
-        media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="{Path(job.result).name}"'
-        },
+        temp_file.name,
+        filename=(job.result).split("/")[-1],
+        background=BackgroundTask(os.remove, temp_file.name),
     )
 
 
@@ -232,11 +255,20 @@ async def get_image(
     img_name: str | int,
     current_host: Host = Depends(get_current_host),
 ):
-    img_path = Path("src") / f"images/{id}/{img_name}.png"
+    image_path = f"images/{id}/{img_name}.png"
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_file.close()
+
+    try:
+        s3.download_file(BUCKET_NAME, image_path, temp_file.name)
+    except Exception:
+        os.remove(temp_file.name)
+        raise
+
     return FileResponse(
-        path=img_path,
-        filename="".join(str(img_path.name).split("_")[:-1]) + ".png",
-        media_type="image/png",
+        temp_file.name,
+        filename=image_path.split("/")[-1],
+        background=BackgroundTask(os.remove, temp_file.name),
     )
 
 
@@ -245,12 +277,20 @@ async def get_excel(
     excel_name: str | int,
     current_host: Host = Depends(get_current_host),
 ):
-    excel_path = Path("src") / f"excel/{excel_name}"
+    zipfile_name = f"zip_files/{excel_name}"
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_file.close()
+
+    try:
+        s3.download_file(BUCKET_NAME, zipfile_name, temp_file.name)
+    except Exception:
+        os.remove(temp_file.name)
+        raise
+
     return FileResponse(
-        path=excel_path,
-        filename=excel_path.name,
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{excel_path.name}"'},
+        temp_file.name,
+        filename=zipfile_name.split("/")[-1],
+        background=BackgroundTask(os.remove, temp_file.name),
     )
 
 

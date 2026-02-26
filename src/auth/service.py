@@ -13,17 +13,26 @@ from PIL import Image, ImageDraw, ImageFont
 import qrcode
 from src.auth.model import Host, Guest
 from src.auth.schema import HostCreate, HostResponse
-from fastapi.responses import FileResponse
 from pathlib import Path
 import pandas as pd
 import uuid
 import zipfile
 import os
-
-
+import boto3
+import io
+import shutil
 import logging
 
 logger = logging.getLogger(__name__)
+
+BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
+    aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+    region_name="eu-central-1",
+)
 
 
 def create_access_token(
@@ -291,6 +300,7 @@ class AuthService:
                     qr_image_path,
                     f"{row['code']}-{str(row['name'])[:20]}",
                     f"{image_folder/data}.png",
+                    f"images/{file_id}/{data}.png",
                 )
                 if qr_image_path.exists():
                     qr_image_path.unlink()
@@ -300,23 +310,26 @@ class AuthService:
                 status_code=400, detail=f"Excel processing failed: {str(e)}"
             )
 
-        # Return modified
-        # image_folder, saved_path
         # file_id name
         zip_file_name = base_path / (f"{invitation_name}_{file_id}.zip")
         zip_file_and_folder(zip_file_name, saved_path, image_folder)
         if saved_path.exists():
             saved_path.unlink()
-        # return FileResponse(
-        #     path=zip_file_name,
-        #     filename=zip_file_name.name,
-        #     # media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        #     media_type="application/zip",
-        # )
-        return zip_file_name
+
+        with open(zip_file_name, "rb") as f:
+            s3.upload_fileobj(
+                f,
+                BUCKET_NAME,
+                f"zip_files/{invitation_name}_{file_id}.zip",
+                ExtraArgs={"ContentType": "application/zip"},
+            )
+        if image_folder.exists():
+            shutil.rmtree(image_folder)
+
+        return f"zip_files/{invitation_name}_{file_id}.zip"
 
 
-def add_name_to_invitation(input, name, output):
+def add_name_to_invitation(input, name, output, output2):
     """Add a name to the invitation with gold color matching the theme"""
     name = name[:20]
     # Load the image
@@ -365,6 +378,18 @@ def add_name_to_invitation(input, name, output):
 
     # Save to outputs
     img.save(output)
+    buffer = io.BytesIO()
+
+    # Save image into memory buffer
+    img.save(buffer, format="PNG")  # or JPEG depending on your file type
+
+    # Move cursor to beginning of buffer
+    buffer.seek(0)
+
+    # Upload to S3
+    s3.upload_fileobj(
+        buffer, BUCKET_NAME, output2, ExtraArgs={"ContentType": "image/png"}
+    )
 
     return True
 

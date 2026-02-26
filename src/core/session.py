@@ -16,10 +16,10 @@ DB_URI = os.getenv(
 Base = declarative_base()
 
 engine = create_engine(
-    f"sqlite:///{DB_PATH}",
-    # ,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
+    # f"sqlite:///{DB_PATH}",
+    DB_URI,
+    # connect_args={"check_same_thread": False},
+    # poolclass=StaticPool,
     echo=False,
 )
 
